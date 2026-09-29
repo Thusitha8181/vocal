@@ -3,12 +3,19 @@
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import { ExternalLink } from "lucide-react";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, ApiError, type CallTurn, type LiveEvent } from "@/lib/api";
 import { useLiveEvents } from "@/lib/use-live-events";
 import { TurnTimeline } from "./turn-timeline";
 import { Badge, Card, CardHeader, EmptyState, ErrorNote } from "./ui";
 import { VoiceOrb } from "./voice-orb";
+
+/** LiveKit logs this when ElevenLabs closes the call socket. The call has already ended. */
+function isHangupSignalNoise(args: unknown[]): boolean {
+  return args.some(
+    (arg) => typeof arg === "string" && arg.includes("error reading from signal stream"),
+  );
+}
 
 const SCENARIOS = [
   {
@@ -43,6 +50,17 @@ function VoiceDemoInner() {
   const [fallback, setFallback] = useState<ElevenLabsMessage[]>([]);
   const [callId, setCallId] = useState<string | null>(null);
   const callIds = useRef(new Map<string, string>());
+
+  useEffect(() => {
+    const original = console.error.bind(console);
+    console.error = ((...args: unknown[]) => {
+      if (isHangupSignalNoise(args)) return;
+      original(...args);
+    }) as typeof console.error;
+    return () => {
+      console.error = original;
+    };
+  }, []);
 
   const conversation = useConversation({
     onConnect: ({ conversationId }) => {
