@@ -1,5 +1,7 @@
 # Vocal
 
+[![CI](https://github.com/Thusitha8181/vocal/actions/workflows/ci.yml/badge.svg)](https://github.com/Thusitha8181/vocal/actions/workflows/ci.yml)
+
 An AI voice agent that answers customer-service phone calls for **Lauki Phones**, a fictional
 Indian mobile network. Callers speak naturally; Vocal transcribes them, works out what they need,
 looks up policy documents or their account, and talks back, typically starting to answer in
@@ -230,7 +232,7 @@ make test
 make lint
 ```
 
-The tests create a separate `vocal_test` database and Qdrant collection. They cover retrieval
+The same checks run on every push to `main` and on pull requests. The tests create a separate `vocal_test` database and Qdrant collection. They cover retrieval
 quality for typical questions, the account tools and verification rules, the streaming endpoint
 (fillers, `end_call` forwarding, turn logging), webhook signature checks and the dashboard API.
 
