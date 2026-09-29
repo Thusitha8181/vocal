@@ -5,6 +5,7 @@ from app.agent.tools import (
     get_account_overview,
     get_latest_bill,
     get_usage,
+    list_plans,
     verify_customer,
 )
 from app.db.models import CallChannel
@@ -16,6 +17,13 @@ async def _new_call() -> dict:
         f"test-{uuid.uuid4()}", channel=CallChannel.web, caller_number=None
     )
     return {"configurable": {"call_id": str(call.id)}}
+
+
+async def test_list_plans_is_the_full_catalogue():
+    result = await list_plans.ainvoke({})
+    assert "exactly 4 plans" in result
+    for name in ("Lauki Lite 500MB", "Lauki Basic 1GB", "Lauki Premium 2GB", "Lauki Elite 5GB"):
+        assert name in result
 
 
 async def test_account_tools_require_verification():

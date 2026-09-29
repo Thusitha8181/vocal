@@ -32,6 +32,34 @@ def _gb(mb: int) -> str:
     return f"{mb / 1024:.1f} GB" if mb >= 1024 else f"{mb} MB"
 
 
+def _describe_plan(plan: Plan) -> str:
+    price = (
+        f"{plan.price_inr} rupees per month"
+        if plan.connection_type == ConnectionType.postpaid
+        else f"{plan.price_inr} rupees for {plan.validity_days} days"
+    )
+    return (
+        f"{plan.name} ({plan.connection_type}), {price}. "
+        f"Allowance: {_gb(plan.data_mb)} data, {plan.voice_minutes} minutes, {plan.sms} SMS. "
+        f"Benefits: {plan.benefits}"
+    )
+
+
+@tool
+async def list_plans() -> str:
+    """List every Lauki Phones plan currently on sale, with price, validity, data, minutes,
+    SMS and benefits. Use it when the caller asks which plans exist, wants to compare plans
+    or asks for a plan's price or allowance."""
+    async with session_scope() as session:
+        plans = (await session.exec(select(Plan).order_by(col(Plan.price_inr)))).all()
+    lines = [f"- {_describe_plan(plan)}" for plan in plans]
+    return (
+        f"Lauki Phones sells exactly {len(plans)} plans:\n"
+        + "\n".join(lines)
+        + "\nThe caller has not heard this list. Answer their question from it out loud."
+    )
+
+
 @tool(response_format="content_and_artifact")
 async def search_knowledge_base(query: str) -> tuple[str, list[dict[str, Any]]]:
     """Search Lauki Phones' official documents: plans and pricing, billing and payments FAQ,
@@ -84,14 +112,7 @@ async def get_account_overview(config: RunnableConfig) -> str:
 
     lines = [
         f"Name: {customer.full_name}, city: {customer.city}",
-        f"Plan: {plan.name} ({plan.connection_type}), Rs. {plan.price_inr}"
-        + (
-            " per month"
-            if plan.connection_type == ConnectionType.postpaid
-            else f" for {plan.validity_days} days"
-        ),
-        f"Allowance: {_gb(plan.data_mb)} data, {plan.voice_minutes} minutes, {plan.sms} SMS",
-        f"Plan benefits: {plan.benefits}",
+        f"Plan: {_describe_plan(plan)}",
         f"Account status: {customer.account_status}",
     ]
     if customer.account_status == AccountStatus.suspended:
@@ -124,13 +145,13 @@ async def get_latest_bill(config: RunnableConfig) -> str:
     if bill is None:
         return "This customer has no bills. Prepaid customers pay upfront through recharges."
 
-    items = "\n".join(f"- {i['description']}: Rs. {i['amount_inr']}" for i in bill.line_items)
+    items = "\n".join(f"- {i['description']}: {i['amount_inr']} rupees" for i in bill.line_items)
     days_to_due = (bill.due_date - date.today()).days
     due = f"due in {days_to_due} days" if days_to_due >= 0 else f"{-days_to_due} days past due"
     paid = f", paid on {bill.paid_on:%d %B %Y}" if bill.paid_on else ""
     return (
         f"Bill period: {bill.period_start:%d %B} to {bill.period_end:%d %B %Y}\n"
-        f"Total: Rs. {bill.amount_inr}\n"
+        f"Total: {bill.amount_inr} rupees\n"
         f"Due date: {bill.due_date:%d %B %Y} ({due})\n"
         f"Status: {bill.status}{paid}\n"
         f"Line items:\n{items}"
@@ -176,6 +197,7 @@ async def end_call(reason: str, message: str) -> str:
 
 TOOLS = [
     search_knowledge_base,
+    list_plans,
     verify_customer,
     get_account_overview,
     get_latest_bill,

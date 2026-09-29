@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+import groq
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import ToolMessage
 from langchain_core.runnables import RunnableConfig
@@ -19,11 +20,13 @@ def build_llm() -> BaseChatModel:
     settings = get_settings()
     kwargs = {}
     if "gpt-oss" in settings.groq_model:
-        # Low reasoning effort keeps time-to-first-token small enough for natural voice turns.
-        kwargs["reasoning_effort"] = "low"
+        # Trades answer quality against time-to-first-token on voice turns.
+        kwargs["reasoning_effort"] = settings.groq_reasoning_effort
     return ChatGroq(
         model=settings.groq_model,
-        api_key=settings.groq_api_key or None,
+        # A placeholder keeps startup working without a key; calls then fail and the runner
+        # speaks a graceful apology instead of the endpoint returning a 500 mid-call.
+        api_key=settings.groq_api_key or "missing-groq-api-key",
         temperature=settings.groq_temperature,
         max_tokens=400,
         streaming=True,
@@ -42,7 +45,12 @@ def _after_tools(state: MessagesState) -> str:
 
 
 def build_graph(llm: BaseChatModel | None = None) -> CompiledStateGraph:
-    model = (llm or build_llm()).bind_tools(TOOLS)
+    # gpt-oss on Groq occasionally emits malformed tool-call JSON; one retry usually succeeds.
+    model = (
+        (llm or build_llm())
+        .bind_tools(TOOLS)
+        .with_retry(retry_if_exception_type=(groq.APIError,), stop_after_attempt=2)
+    )
 
     async def agent(state: MessagesState, config: RunnableConfig) -> dict:
         response = await model.ainvoke(state["messages"], config)

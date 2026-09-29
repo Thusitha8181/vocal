@@ -33,7 +33,9 @@ services:
   backend:
     build: ./backend
     profiles: ["app"]
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
       DATABASE_URL: postgresql+asyncpg://vocal:vocal@postgres:5432/vocal
       QDRANT_URL: http://qdrant:6333

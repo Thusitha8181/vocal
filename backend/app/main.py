@@ -18,6 +18,8 @@ log = logging.getLogger("vocal")
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    if not get_settings().groq_api_key:
+        log.warning("GROQ_API_KEY is not set; the agent will reply with an error message")
     # Load the embedding model and connect to Qdrant up front so the first caller isn't slowed.
     try:
         await asyncio.to_thread(get_vector_store)

@@ -68,7 +68,10 @@ PLANS = [
         data_mb=5120,
         voice_minutes=1000,
         sms=500,
-        benefits="Unlimited data rollover, 24/7 priority support, Netflix and Amazon Prime Video.",
+        benefits=(
+            "Unlimited data rollover, 24/7 priority support, bundled Netflix and "
+            "Amazon Prime Video subscriptions."
+        ),
     ),
 ]
 

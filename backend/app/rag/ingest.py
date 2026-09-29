@@ -5,6 +5,7 @@ Run: uv run python -m app.rag.ingest [--file some.pdf]
 
 import argparse
 import asyncio
+import bisect
 import re
 import uuid
 from dataclasses import dataclass
@@ -45,25 +46,37 @@ def _title(first_page: str, fallback: str) -> str:
     return " - ".join(lines[:2]) if lines else fallback
 
 
-def load_pdf(path: Path) -> tuple[str, list[Document]]:
+def load_pdf(path: Path) -> tuple[str, int, list[Document]]:
     reader = PdfReader(path)
     pages = [_clean(page.extract_text() or "") for page in reader.pages]
     title = _title(pages[0] if pages else "", path.stem)
+
+    # Split the document as one text so sections that cross a page break stay together. A single
+    # newline between pages keeps the splitter from treating page breaks as paragraph breaks.
+    page_starts: list[int] = []
+    offset = 0
+    for text in pages:
+        page_starts.append(offset)
+        offset += len(text) + 1
+    full_text = "\n".join(pages)
+
     docs: list[Document] = []
-    for page_number, text in enumerate(pages, start=1):
-        for chunk in splitter.split_text(text):
-            # A contextual header on every chunk improves retrieval for short, table-heavy pages.
-            docs.append(
-                Document(
-                    page_content=f"{title}\n\n{chunk}",
-                    metadata={"source": path.name, "title": title, "page": page_number},
-                )
+    start = -1
+    for chunk in splitter.split_text(full_text):
+        start = max(full_text.find(chunk, start + 1), 0)
+        page_number = bisect.bisect_right(page_starts, start)
+        # A contextual header on every chunk improves retrieval for short, table-heavy pages.
+        docs.append(
+            Document(
+                page_content=f"{title}\n\n{chunk}",
+                metadata={"source": path.name, "title": title, "page": page_number},
             )
-    return title, docs
+        )
+    return title, len(pages), docs
 
 
 def index_file(path: Path) -> IngestResult:
-    title, docs = load_pdf(path)
+    title, pages, docs = load_pdf(path)
     store = get_vector_store()
     get_qdrant_client().delete(
         get_settings().qdrant_collection,
@@ -78,7 +91,6 @@ def index_file(path: Path) -> IngestResult:
     ids = [str(uuid.uuid5(CHUNK_NAMESPACE, f"{path.name}:{i}")) for i in range(len(docs))]
     if docs:
         store.add_documents(docs, ids=ids)
-    pages = max((d.metadata["page"] for d in docs), default=0)
     return IngestResult(filename=path.name, title=title, pages=pages, chunks=len(docs))
 
 

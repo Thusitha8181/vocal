@@ -2,6 +2,8 @@
 
 import pytest
 
+from app.config import get_settings
+from app.rag.ingest import load_pdf
 from app.rag.store import asearch
 
 CASES = [
@@ -15,6 +17,14 @@ CASES = [
     ("My signal is weak indoors, what should I do?", "lauki-network-coverage.pdf"),
     ("When will Jaipur get 5G?", "lauki-network-coverage.pdf"),
 ]
+
+
+def test_plan_sections_are_not_split_across_pages():
+    _, pages, docs = load_pdf(get_settings().knowledge_dir / "lauki-plans.pdf")
+    assert pages == 3
+    premium = next(d for d in docs if "Lauki Premium 2GB" in d.page_content)
+    assert "Price: Rs. 449" in premium.page_content
+    assert "2 GB" in premium.page_content.split("Lauki Premium 2GB", 1)[1]
 
 
 @pytest.mark.parametrize(("question", "expected_source"), CASES)

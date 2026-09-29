@@ -35,6 +35,8 @@ FILLERS = [
 ]
 ERROR_REPLY = "Sorry, I'm having a little trouble on my side right now. Could you say that again?"
 MAX_TOOL_LOG_CHARS = 4000
+# gpt-oss emits typographic spaces/hyphens (e.g. "500\u202fMB", "pan\u2011India").
+_PLAIN_TEXT = str.maketrans({"\u202f": " ", "\u00a0": " ", "\u2011": "-", "\u2010": "-"})
 
 _background: set[asyncio.Task[Any]] = set()
 
@@ -157,6 +159,7 @@ async def run_turn(req: TurnRequest, graph: CompiledStateGraph) -> AsyncIterator
 
     def emit(text: str) -> str:
         nonlocal first_token_ms
+        text = text.translate(_PLAIN_TEXT)
         if first_token_ms is None:
             first_token_ms = int((time.perf_counter() - started) * 1000)
         spoken.append(text)

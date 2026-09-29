@@ -12,13 +12,14 @@ class Settings(BaseSettings):
     )
 
     app_env: str = "development"
-    cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origins: list[str] = ["http://localhost:3000", "http://localhost:3001"]
 
     database_url: str = "postgresql+asyncpg://vocal:vocal@localhost:5432/vocal"
 
     groq_api_key: str = ""
-    groq_model: str = "openai/gpt-oss-20b"
+    groq_model: str = "openai/gpt-oss-120b"
     groq_temperature: float = 0.3
+    groq_reasoning_effort: str = "low"
 
     qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: str | None = None
