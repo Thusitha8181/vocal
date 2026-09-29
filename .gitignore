@@ -1,0 +1,30 @@
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+
+# Local data
+data/uploads/
+
+# onnxruntime (FastEmbed) telemetry session files
+*.ses
