@@ -35,6 +35,8 @@ FILLERS = [
 ]
 ERROR_REPLY = "Sorry, I'm having a little trouble on my side right now. Could you say that again?"
 MAX_TOOL_LOG_CHARS = 4000
+# Recent turns are enough context on a call and keep tokens per request (and rate limits) low.
+MAX_HISTORY_MESSAGES = 12
 # gpt-oss emits typographic spaces/hyphens (e.g. "500\u202fMB", "pan\u2011India").
 _PLAIN_TEXT = str.maketrans({"\u202f": " ", "\u00a0": " ", "\u2011": "-", "\u2010": "-"})
 
@@ -167,7 +169,7 @@ async def run_turn(req: TurnRequest, graph: CompiledStateGraph) -> AsyncIterator
 
     try:
         stream = graph.astream(
-            {"messages": [SystemMessage(system), *req.history]},
+            {"messages": [SystemMessage(system), *req.history[-MAX_HISTORY_MESSAGES:]]},
             config,
             stream_mode=["messages", "updates"],
         )

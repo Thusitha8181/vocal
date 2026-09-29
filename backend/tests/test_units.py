@@ -2,10 +2,14 @@ import hashlib
 import hmac
 import time
 
+import groq
 import pytest
+from langchain_core.runnables import RunnableWithFallbacks
 
+from app.agent.graph import build_model
 from app.agent.runner import parse_chat_request
 from app.api.webhooks import verify_signature
+from app.config import get_settings
 from app.db.models import CallChannel
 from app.services.phone import normalize_phone, same_number
 
@@ -77,3 +81,14 @@ def test_parse_chat_request_ignores_unrendered_variables():
     assert req.caller_number is None
     assert req.channel == CallChannel.web
     assert not req.can_end_call
+
+
+def test_rate_limited_primary_falls_back_to_second_model():
+    model = build_model()
+    assert isinstance(model, RunnableWithFallbacks)
+    assert model.exceptions_to_handle == (groq.APIError,)
+    assert issubclass(groq.RateLimitError, groq.APIError)
+    primary, fallback = model.runnable.bound, model.fallbacks[0].bound
+    assert primary.max_retries == 0
+    assert primary.model_name == get_settings().groq_model
+    assert fallback.model_name == get_settings().groq_fallback_model

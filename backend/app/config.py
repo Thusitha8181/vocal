@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     groq_model: str = "openai/gpt-oss-120b"
     groq_temperature: float = 0.3
     groq_reasoning_effort: str = "low"
+    # Used when the primary model is rate limited or errors; empty disables the fallback.
+    groq_fallback_model: str = "openai/gpt-oss-20b"
 
     qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: str | None = None
@@ -27,7 +29,7 @@ class Settings(BaseSettings):
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     embedding_cache_dir: Path = Path.home() / ".cache" / "fastembed"
     knowledge_dir: Path = REPO_ROOT / "data" / "knowledge"
-    rag_top_k: int = 4
+    rag_top_k: int = 3
 
     # Shared secret ElevenLabs sends as a Bearer token when calling the custom LLM endpoint.
     custom_llm_api_key: str = ""

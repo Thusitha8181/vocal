@@ -47,9 +47,7 @@ def _describe_plan(plan: Plan) -> str:
 
 @tool
 async def list_plans() -> str:
-    """List every Lauki Phones plan currently on sale, with price, validity, data, minutes,
-    SMS and benefits. Use it when the caller asks which plans exist, wants to compare plans
-    or asks for a plan's price or allowance."""
+    """The complete catalogue of Lauki plans with prices, allowances and benefits."""
     async with session_scope() as session:
         plans = (await session.exec(select(Plan).order_by(col(Plan.price_inr)))).all()
     lines = [f"- {_describe_plan(plan)}" for plan in plans]
@@ -62,10 +60,8 @@ async def list_plans() -> str:
 
 @tool(response_format="content_and_artifact")
 async def search_knowledge_base(query: str) -> tuple[str, list[dict[str, Any]]]:
-    """Search Lauki Phones' official documents: plans and pricing, billing and payments FAQ,
-    late fees, refunds, recharges, plan switching, network coverage, 5G availability and
-    signal troubleshooting. Use it for any policy or product question. Pass a focused,
-    self-contained search query."""
+    """Search Lauki's policy documents (billing, late fees, refunds, recharges, plan switching,
+    coverage, 5G, signal problems) with a focused query."""
     chunks = await asearch(query)
     if not chunks:
         return "No relevant information found in the knowledge base.", []
@@ -79,8 +75,8 @@ async def search_knowledge_base(query: str) -> tuple[str, list[dict[str, Any]]]:
 async def verify_customer(
     phone_number: str, account_holder_name: str, config: RunnableConfig
 ) -> str:
-    """Verify the caller's identity using their registered phone number and the account
-    holder's name (first name is enough). Must succeed before any account tool is used."""
+    """Verify the caller by registered phone number and account holder's name (first name is
+    enough). Required before any account tool."""
     call_id = _call_id(config)
     phone = normalize_phone(phone_number)
     if not phone or call_id is None:
@@ -101,8 +97,7 @@ async def verify_customer(
 
 @tool
 async def get_account_overview(config: RunnableConfig) -> str:
-    """Get the verified caller's plan, connection type, account status, prepaid validity,
-    bill cycle date and autopay setting."""
+    """Verified caller's plan, account status, prepaid validity, bill cycle and autopay."""
     customer = await _verified_customer(config)
     if customer is None:
         return NOT_VERIFIED
@@ -129,8 +124,8 @@ async def get_account_overview(config: RunnableConfig) -> str:
 
 @tool
 async def get_latest_bill(config: RunnableConfig) -> str:
-    """Get the verified caller's most recent postpaid bill: amount, due date, payment status
-    and itemised line items. Use this to explain why a bill is higher than expected."""
+    """Verified caller's latest bill with due date, status and line items (explains why a bill
+    is higher)."""
     customer = await _verified_customer(config)
     if customer is None:
         return NOT_VERIFIED
@@ -160,8 +155,7 @@ async def get_latest_bill(config: RunnableConfig) -> str:
 
 @tool
 async def get_usage(config: RunnableConfig) -> str:
-    """Get the verified caller's data, voice and SMS usage for the current cycle and what
-    remains of their plan allowance, including rolled-over data."""
+    """Verified caller's data, voice and SMS usage this cycle and what remains."""
     customer = await _verified_customer(config)
     if customer is None:
         return NOT_VERIFIED
@@ -190,8 +184,7 @@ async def get_usage(config: RunnableConfig) -> str:
 
 @tool
 async def end_call(reason: str, message: str) -> str:
-    """End the call once the caller's questions are answered and they say goodbye or confirm
-    they need nothing else. `message` is the short farewell spoken before hanging up."""
+    """Hang up when the caller is done. `message` is the farewell spoken before hanging up."""
     return "Call ended."
 
 

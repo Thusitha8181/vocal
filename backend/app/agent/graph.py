@@ -3,7 +3,7 @@ from functools import lru_cache
 import groq
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import ToolMessage
-from langchain_core.runnables import RunnableConfig
+from langchain_core.runnables import Runnable, RunnableConfig
 from langchain_groq import ChatGroq
 from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.graph.state import CompiledStateGraph
@@ -16,22 +16,40 @@ from app.config import get_settings
 RECURSION_LIMIT = 10
 
 
-def build_llm() -> BaseChatModel:
+def build_llm(model: str | None = None, *, max_retries: int = 2) -> ChatGroq:
     settings = get_settings()
+    model = model or settings.groq_model
     kwargs = {}
-    if "gpt-oss" in settings.groq_model:
+    if "gpt-oss" in model:
         # Trades answer quality against time-to-first-token on voice turns.
         kwargs["reasoning_effort"] = settings.groq_reasoning_effort
     return ChatGroq(
-        model=settings.groq_model,
+        model=model,
         # A placeholder keeps startup working without a key; calls then fail and the runner
         # speaks a graceful apology instead of the endpoint returning a 500 mid-call.
         api_key=settings.groq_api_key or "missing-groq-api-key",
         temperature=settings.groq_temperature,
         max_tokens=400,
+        max_retries=max_retries,
         streaming=True,
         **kwargs,
     )
+
+
+def build_model() -> Runnable:
+    """The primary Groq model with tools, falling back to a second model on API errors.
+
+    Groq rate limits are per model, so when the primary hits its tokens-per-minute limit the
+    fallback usually still has headroom. Disabling SDK retries on the primary makes the switch
+    immediate instead of waiting out the limit. The fallback also covers gpt-oss's occasional
+    malformed tool-call JSON.
+    """
+    settings = get_settings()
+    if not settings.groq_fallback_model:
+        return build_llm().bind_tools(TOOLS)
+    primary = build_llm(max_retries=0).bind_tools(TOOLS)
+    fallback = build_llm(settings.groq_fallback_model).bind_tools(TOOLS)
+    return primary.with_fallbacks([fallback], exceptions_to_handle=(groq.APIError,))
 
 
 def _after_tools(state: MessagesState) -> str:
@@ -45,12 +63,7 @@ def _after_tools(state: MessagesState) -> str:
 
 
 def build_graph(llm: BaseChatModel | None = None) -> CompiledStateGraph:
-    # gpt-oss on Groq occasionally emits malformed tool-call JSON; one retry usually succeeds.
-    model = (
-        (llm or build_llm())
-        .bind_tools(TOOLS)
-        .with_retry(retry_if_exception_type=(groq.APIError,), stop_after_attempt=2)
-    )
+    model = llm.bind_tools(TOOLS) if llm else build_model()
 
     async def agent(state: MessagesState, config: RunnableConfig) -> dict:
         response = await model.ainvoke(state["messages"], config)

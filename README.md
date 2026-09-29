@@ -51,7 +51,7 @@ sequenceDiagram
     API->>G: run the agent
     G->>T: search_knowledge_base("late payment fee")
     API-->>EL: "Sure, let me check that for you... " (filler while the tool runs)
-    T-->>G: top-4 chunks from the billing FAQ
+    T-->>G: top-3 chunks from the billing FAQ
     G-->>API: streamed answer tokens
     API-->>EL: SSE token deltas
     EL-->>C: synthesized speech
