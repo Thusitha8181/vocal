@@ -98,4 +98,4 @@ jobs:
 
       - name: Install, type-check, lint, and build
         working-directory: frontend
-        run: npm ci && npx tsc --noEmit && npm run lint && npm run build
+        run: npm ci && npx next typegen && npx tsc --noEmit && npm run lint && npm run build
