@@ -25,6 +25,7 @@ next-env.d.ts
 
 # Local data
 data/uploads/
+docs/images/*.mov
 
 # onnxruntime (FastEmbed) telemetry session files
 *.ses

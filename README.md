@@ -11,9 +11,10 @@ account status from a Postgres database. A Next.js dashboard lets you talk to th
 browser, watch calls live with every tool call and retrieved document, and manage the knowledge
 base.
 
-> **Demo:** _add a short screen recording of a call here (`docs/images/demo.gif`)._
+![Browser call: plans, then Priya's bill](docs/images/demo.gif)
 
-![Demo customers page](docs/images/customers.png)
+Maya lists the four plans, then explains Priya Sharma's higher bill after the caller gives
+her number and name. The live transcript shows the tool calls underneath.
 
 ## How it works
 
